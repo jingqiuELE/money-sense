@@ -57,8 +57,9 @@ func loadData(csvPath string, store *storage.Storage) (string, error) {
 			}
 
 			opts := &input.CSVInputOptions{
-				Separator: ',',
-				ReadFrom:  reader,
+				Separator:  ',',
+				ReadFrom:   reader,
+				TimeFormat: TimeFormat,
 			}
 
 			csvInput, err := input.NewCSVInput(opts)
@@ -133,12 +134,8 @@ func (ms *MoneySense) Retrieve(category string, start string, end string) []Reco
 		log.Fatal("Failed to parse date:", end)
 	}
 
-	//QUERY := fmt.Sprintf(`SELECT date, history.mechant, credit, category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v'`,
-	//	ms.history, ms.classifier, ms.history, ms.classifier, start_dt, end_dt)
-	//QUERY := fmt.Sprintf(`SELECT date, mechant, credit FROM %v WHERE date >= '%v' AND date <= '%v';`, ms.history, start_dt, end_dt)
-	_ = start_dt
-	_ = end_dt
-	QUERY := fmt.Sprintf(`SELECT date, mechant, credit FROM %v`, ms.history)
+	QUERY := fmt.Sprintf(`SELECT date, history.mechant, credit, category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v'`,
+		ms.history, ms.classifier, ms.history, ms.classifier, start_dt, end_dt)
 	fmt.Println("query:", QUERY)
 	rows, err := ms.store.Query(QUERY)
 	if err != nil {
@@ -148,8 +145,7 @@ func (ms *MoneySense) Retrieve(category string, start string, end string) []Reco
 	for rows.Next() {
 		var r Record
 
-		//err = rows.Scan(&r.Date, &r.Mechant, &r.Amount, &r.Category)
-		err = rows.Scan(&r.Date, &r.Mechant, &r.Amount)
+		err = rows.Scan(&r.Date, &r.Mechant, &r.Amount, &r.Category)
 		if err != nil {
 			log.Fatal(err)
 		}

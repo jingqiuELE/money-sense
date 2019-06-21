@@ -6,6 +6,7 @@ import (
 	"log"
 	"path"
 	"strings"
+	"time"
 
 	"../input"
 
@@ -80,7 +81,7 @@ func (s *Storage) Load(input *input.CSVInput) error {
 		if row == nil {
 			break
 		}
-		s.loadRow(tableName, len(input.Header()), row, tx, stmt, true)
+		s.loadRow(tableName, len(input.Header()), row, input.Types(), input.Options.TimeFormat, stmt, true)
 		row = input.ReadRecord()
 	}
 	stmt.Close()
@@ -187,7 +188,7 @@ func (s *Storage) createLoadStmt(tableName string, colCount int, db *sql.Tx) *sq
 	return stmt
 }
 
-func (s *Storage) loadRow(tableName string, colCount int, values []string, db *sql.Tx, stmt *sql.Stmt, verbose bool) error {
+func (s *Storage) loadRow(tableName string, colCount int, values []string, types []string, timeFormat string, stmt *sql.Stmt, verbose bool) error {
 	if len(values) == 0 || colCount == 0 {
 		return nil
 	}
@@ -195,7 +196,15 @@ func (s *Storage) loadRow(tableName string, colCount int, values []string, db *s
 	var vals []interface{}
 
 	for i := 0; i < colCount; i++ {
-		vals = append(vals, values[i])
+		if types[i] == "TIMESTAMP" {
+			time, err := time.Parse(timeFormat, values[i])
+			if err != nil {
+				log.Fatal("Failed to parse time according to timeFormat:", timeFormat)
+			}
+			vals = append(vals, time)
+		} else {
+			vals = append(vals, values[i])
+		}
 	}
 
 	_, err := stmt.Exec(vals...)

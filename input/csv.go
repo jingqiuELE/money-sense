@@ -10,7 +10,7 @@ import (
 )
 
 type CSVInput struct {
-	options         *CSVInputOptions
+	Options         *CSVInputOptions
 	reader          *csv.Reader
 	name            string
 	types           []string
@@ -23,17 +23,18 @@ type CSVInputOptions struct {
 	// Separator is the rune that fields are delimited by.
 	Separator rune
 	// ReadFrom is where the data will be read from.
-	ReadFrom io.Reader
+	ReadFrom   io.Reader
+	TimeFormat string
 }
 
 func NewCSVInput(opts *CSVInputOptions) (*CSVInput, error) {
 	csvInput := &CSVInput{
-		options: opts,
+		Options: opts,
 		reader:  csv.NewReader(opts.ReadFrom),
 	}
 
 	csvInput.reader.FieldsPerRecord = -1
-	csvInput.reader.Comma = csvInput.options.Separator
+	csvInput.reader.Comma = csvInput.Options.Separator
 	csvInput.reader.LazyQuotes = true
 
 	headerErr := csvInput.readHeader()
@@ -41,7 +42,7 @@ func NewCSVInput(opts *CSVInputOptions) (*CSVInput, error) {
 		return nil, headerErr
 	}
 
-	if asFile, ok := csvInput.options.ReadFrom.(*os.File); ok {
+	if asFile, ok := csvInput.Options.ReadFrom.(*os.File); ok {
 		csvInput.name = filepath.Dir(asFile.Name())
 	} else {
 		csvInput.name = "pipe"
