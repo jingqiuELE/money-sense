@@ -52,7 +52,7 @@ func runCommand(commandStr string, ms *MoneySense) error {
 	return nil
 }
 
-func printCategoryPercentage(start string, end string, ms *MoneySense) {
+func printCategoryPercentage(start string, end string, ms *MoneySense) error {
 	var total float64
 
 	var m = make(map[string]float64)
@@ -61,14 +61,19 @@ func printCategoryPercentage(start string, end string, ms *MoneySense) {
 	for _, r := range records {
 		m[r.Category] += r.Amount
 	}
+	err := PlotPieByCategory(m)
+	if err != nil {
+		return err
+	}
+
+	pl := sortByPercentage(m)
 	fmt.Printf("|%-16s|%-16s|%-16s\n", "Category", "Percentage", "Amount")
 	fmt.Println("-----------------------------------------------")
 	for _, amount := range m {
 		total += amount
 	}
-
-	pl := sortByPercentage(m)
 	for _, p := range pl {
-		fmt.Printf("|%-16v|%%%-16.2f|$%-16.2f\n", p.Key, (p.Value/total)*100, p.Value)
+		fmt.Printf("|%-16v|%%%-15.2f|$%-16.2f\n", p.Key, (p.Value/total)*100, p.Value)
 	}
+	return nil
 }
