@@ -9,6 +9,7 @@ import (
 	"github.com/benoitmasson/plotters/piechart"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg/draw"
 )
 
 func PlotPieByCategory(data map[string]float64) error {
@@ -48,4 +49,49 @@ func PlotPieByCategory(data map[string]float64) error {
 		log.Fatal("Failed to generate png output!", err)
 	}
 	return err
+}
+
+func plotHistory(history map[string][]Record) error {
+	p, err := plot.New()
+	if err != nil {
+		log.Panic(err)
+	}
+	// xticks defines how we convert and display time.Time values.
+	xticks := plot.TimeTicks{Format: TimeFormat}
+	p.Title.Text = "Spending History"
+	p.X.Tick.Marker = xticks
+	p.X.Label.Text = "Date"
+	p.Y.Label.Text = "Amount"
+	p.Add(plotter.NewGrid())
+
+	for category, records := range history {
+		var pts plotter.XYs
+		for _, r := range records {
+			point := plotter.XY{
+				X: float64(r.Date.Unix()),
+				Y: r.Amount,
+			}
+			pts = append(pts, point)
+		}
+		lpLine, lpPoints, err := plotter.NewLinePoints(pts)
+		if err != nil {
+			log.Panic(err)
+		}
+		lpLine.Color = color.RGBA{
+			R: uint8(rand.Intn(255)),
+			G: uint8(rand.Intn(255)),
+			B: uint8(rand.Intn(255)),
+			A: 255,
+		}
+		lpPoints.Shape = draw.PyramidGlyph{}
+		lpPoints.Color = lpLine.Color
+		p.Add(lpLine, lpPoints)
+		p.Legend.Add(category, lpLine, lpPoints)
+	}
+
+	err = p.Save(600, 600, "./graph/plotHistory.png")
+	if err != nil {
+		log.Panic(err)
+	}
+	return nil
 }

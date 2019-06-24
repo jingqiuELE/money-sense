@@ -48,6 +48,11 @@ func runCommand(commandStr string, ms *MoneySense) error {
 			return errors.New("Require 2 arguments specifying date range.")
 		}
 		printCategoryPercentage(arrCommandStr[1], arrCommandStr[2], ms)
+	case "ph":
+		if len(arrCommandStr) < 4 {
+			return errors.New("Require 3 arguments specifying category and date range.")
+		}
+		printHistory(arrCommandStr[1], arrCommandStr[2], arrCommandStr[3], ms)
 	}
 	return nil
 }
@@ -66,7 +71,7 @@ func printCategoryPercentage(start string, end string, ms *MoneySense) error {
 		return err
 	}
 
-	pl := sortByPercentage(m)
+	pl := sortMapByValue(m)
 	fmt.Printf("|%-16s|%-16s|%-16s\n", "Category", "Percentage", "Amount")
 	fmt.Println("-----------------------------------------------")
 	for _, amount := range m {
@@ -76,4 +81,15 @@ func printCategoryPercentage(start string, end string, ms *MoneySense) error {
 		fmt.Printf("|%-16v|%%%-15.2f|$%-16.2f\n", p.Key, (p.Value/total)*100, p.Value)
 	}
 	return nil
+}
+
+func printHistory(category string, start string, end string, ms *MoneySense) error {
+	var m = make(map[string][]Record)
+	records := ms.Retrieve(category, start, end)
+	for _, r := range records {
+		m[r.Category] = append(m[r.Category], r)
+	}
+
+	err := plotHistory(m)
+	return err
 }
