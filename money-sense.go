@@ -108,7 +108,7 @@ func (ms *MoneySense) Classify() error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		query := fmt.Sprintf(`SELECT category FROM %v WHERE mechant == '%v'`, ms.classifier, mechant)
+		query := fmt.Sprintf(`SELECT category FROM "%v" WHERE mechant == "%v"`, ms.classifier, mechant)
 		err = ms.store.QueryRow(query).Scan(&category)
 		if err == sql.ErrNoRows {
 			fmt.Printf("What is the category of %v?\n", mechant)
@@ -118,7 +118,7 @@ func (ms *MoneySense) Classify() error {
 				fmt.Fprintln(os.Stderr, err)
 			} else {
 				category = strings.TrimSuffix(input, "\n")
-				insert := fmt.Sprintf(`INSERT INTO %v(mechant, category) VALUES("%v", "%v")`, ms.classifier, mechant, category)
+				insert := fmt.Sprintf(`INSERT INTO "%v"(mechant, category) VALUES("%v", "%v")`, ms.classifier, mechant, category)
 				_, err = ms.store.Exec(insert)
 				if err != nil {
 					log.Fatal("Failed to insert category information")
@@ -126,7 +126,7 @@ func (ms *MoneySense) Classify() error {
 			}
 			changed = true
 		} else if err != nil {
-			log.Fatal("Failed to classify:", err)
+			log.Fatalf("Failed to classify: %v, err=%v\n", query, err)
 		} else {
 			fmt.Printf("Classify %v as %v\n", mechant, category)
 		}

@@ -141,11 +141,11 @@ func (s *Storage) Save(tableName string, output *output.CSVOutput) error {
 		if err != nil {
 			log.Fatal("Failed to Save:", err)
 		}
-		//csvVals, err := ValString(values, types, output.Options.TimeFormat)
-		//if err != nil {
-		//	log.Fatal("Failed to convert data to csv string")
-		//}
-		output.WriteRow(values)
+		csvVals, err := ValString(values, types, output.Options.TimeFormat)
+		if err != nil {
+			log.Fatal("Failed to convert data to csv string")
+		}
+		output.WriteRow(csvVals)
 	}
 	output.Flush()
 	return nil
