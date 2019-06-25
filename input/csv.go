@@ -10,12 +10,12 @@ import (
 )
 
 type CSVInput struct {
-	Options         *CSVInputOptions
-	reader          *csv.Reader
-	name            string
-	types           []string
-	header          []string
-	minOutputLength int
+	Options   *CSVInputOptions
+	reader    *csv.Reader
+	name      string
+	types     []string
+	columns   []string
+	columnLen int
 }
 
 // CSVInputOptions options are passed to the underlying encoding/csv reader.
@@ -59,17 +59,17 @@ func NewCSVInput(opts *CSVInputOptions) (*CSVInput, error) {
 // In the event of a parse error due to an invalid record, it is logged, and
 // an empty []string is returned with the number of fields in the first row,
 // as if the record were empty.
-func (csvInput *CSVInput) ReadRecord() []string {
+func (csvInput *CSVInput) ReadRow() []string {
 	var row []string
 	var fileErr error
 
 	row, fileErr = csvInput.reader.Read()
-	emptysToAppend := csvInput.minOutputLength - len(row)
+	emptysToAppend := csvInput.columnLen - len(row)
 	if fileErr == io.EOF {
 		return nil
 	} else if parseErr, ok := fileErr.(*csv.ParseError); ok {
 		log.Println(parseErr)
-		emptysToAppend = csvInput.minOutputLength
+		emptysToAppend = csvInput.columnLen
 	}
 
 	if emptysToAppend > 0 {
@@ -89,17 +89,17 @@ func (csvInput *CSVInput) readHeader() error {
 		return readErr
 	}
 
-	csvInput.minOutputLength = len(csvInput.types)
-	csvInput.header, readErr = csvInput.reader.Read()
+	csvInput.columnLen = len(csvInput.types)
+	csvInput.columns, readErr = csvInput.reader.Read()
 	if readErr != nil {
-		header := make([]string, csvInput.minOutputLength)
-		copy(header, csvInput.header)
-		for i := len(csvInput.header); i < csvInput.minOutputLength; i++ {
-			header[i] = "c" + strconv.Itoa(i)
+		columns := make([]string, csvInput.columnLen)
+		copy(columns, csvInput.columns)
+		for i := len(csvInput.columns); i < csvInput.columnLen; i++ {
+			columns[i] = "c" + strconv.Itoa(i)
 		}
-		csvInput.header = header
+		csvInput.columns = columns
 	}
-	if len(csvInput.header) != csvInput.minOutputLength {
+	if len(csvInput.columns) != csvInput.columnLen {
 		log.Fatalln("Column names and types should have the same length!")
 	}
 	return nil
@@ -111,10 +111,10 @@ func (csvInput *CSVInput) Name() string {
 	return csvInput.name
 }
 
-// Header returns the header of the csvInput. Either the first row if a header
+// columns returns the columns of the csvInput. Either the first row if a columns
 // set in the options, or c#, where # is the column number, starting with 0.
-func (csvInput *CSVInput) Header() []string {
-	return csvInput.header
+func (csvInput *CSVInput) Columns() []string {
+	return csvInput.columns
 }
 
 func (csvInput *CSVInput) Types() []string {

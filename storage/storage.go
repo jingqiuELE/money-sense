@@ -6,9 +6,9 @@ import (
 	"log"
 	"path"
 	"strings"
-	"time"
 
 	"../input"
+	"../output"
 
 	sqlite3 "github.com/mattn/go-sqlite3"
 )
@@ -63,7 +63,7 @@ func (s *Storage) Close() error {
 
 func (s *Storage) Load(input *input.CSVInput) error {
 	tableName := strings.Replace(input.Name(), path.Ext(input.Name()), "", -1)
-	err := s.createTable(tableName, input.Header(), input.Types())
+	err := s.createTable(tableName, input.Columns(), input.Types())
 	if err != nil {
 		log.Fatal("Failed to create table!")
 	}
@@ -74,15 +74,15 @@ func (s *Storage) Load(input *input.CSVInput) error {
 		log.Fatalln(txErr)
 	}
 
-	stmt := s.createLoadStmt(tableName, len(input.Header()), tx)
+	stmt := s.createLoadStmt(tableName, len(input.Columns()), tx)
 
-	row := input.ReadRecord()
+	row := input.ReadRow()
 	for {
 		if row == nil {
 			break
 		}
-		s.loadRow(tableName, len(input.Header()), row, input.Types(), input.Options.TimeFormat, stmt, true)
-		row = input.ReadRecord()
+		s.loadRow(tableName, len(input.Columns()), row, input.Types(), input.Options.TimeFormat, stmt, true)
+		row = input.ReadRow()
 	}
 	stmt.Close()
 	tx.Commit()
@@ -103,38 +103,51 @@ func (s *Storage) Exec(query string) (sql.Result, error) {
 	return s.db.Exec(query)
 }
 
-// SaveTo saves the current in memory database to the path provided as a string.
-func (s *Storage) SaveTo(path string) error {
-	backupDb, openErr := sql.Open("sqlite3_ms", path)
-	if openErr != nil {
-		return openErr
+func (s *Storage) Save(tableName string, output *output.CSVOutput) error {
+	query := fmt.Sprintf("SELECT * FROM '%v'", tableName)
+	rows, err := s.db.Query(query)
+	if err != nil {
+		log.Fatal("query data base failed!", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		log.Fatal("Failed to return columns information", err)
 	}
 
-	backupPingErr := backupDb.Ping()
-	if backupPingErr != nil {
-		return backupPingErr
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		log.Fatal("Failed to return column types", err)
 	}
-	backupConnID := len(sqlite3conn) - 1
-
-	backup, backupStartErr := sqlite3conn[backupConnID].Backup("main", sqlite3conn[s.connID], "main")
-	if backupStartErr != nil {
-		return backupStartErr
+	var types []string
+	for _, colType := range colTypes {
+		types = append(types, colType.DatabaseTypeName())
 	}
 
-	_, backupPerformError := backup.Step(-1)
-	if backupPerformError != nil {
-		return backupPerformError
+	err = output.WriteHeader(types, columns)
+	if err != nil {
+		log.Fatal("Failed to write header to csvOutput")
 	}
 
-	backupFinishError := backup.Finish()
-	if backupFinishError != nil {
-		return backupFinishError
+	values := make([]string, len(columns))
+	pVals := make([]interface{}, len(columns))
+	for i, _ := range values {
+		pVals[i] = &values[i]
 	}
 
-	backupCloseError := backupDb.Close()
-	if backupCloseError != nil {
-		return backupCloseError
+	for rows.Next() {
+		err = rows.Scan(pVals...)
+		if err != nil {
+			log.Fatal("Failed to Save:", err)
+		}
+		//csvVals, err := ValString(values, types, output.Options.TimeFormat)
+		//if err != nil {
+		//	log.Fatal("Failed to convert data to csv string")
+		//}
+		output.WriteRow(values)
 	}
+	output.Flush()
 	return nil
 }
 
@@ -193,21 +206,12 @@ func (s *Storage) loadRow(tableName string, colCount int, values []string, types
 		return nil
 	}
 
-	var vals []interface{}
-
-	for i := 0; i < colCount; i++ {
-		if types[i] == "TIMESTAMP" {
-			time, err := time.Parse(timeFormat, values[i])
-			if err != nil {
-				log.Fatal("Failed to parse time according to timeFormat:", timeFormat)
-			}
-			vals = append(vals, time)
-		} else {
-			vals = append(vals, values[i])
-		}
+	vals, err := StringVal(values, types, timeFormat)
+	if err != nil {
+		log.Fatal("loadRow: Failed to convert data", err)
 	}
 
-	_, err := stmt.Exec(vals...)
+	_, err = stmt.Exec(vals...)
 
 	if err != nil && verbose {
 		log.Printf("Bad row: %v\n", err)

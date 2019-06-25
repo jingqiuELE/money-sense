@@ -20,6 +20,11 @@ func main() {
 		log.Fatal("Could not initiate MoneySense!")
 	}
 
+	err = ms.Classify()
+	if err != nil {
+		log.Fatal("Could not classify records!")
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("$ ")

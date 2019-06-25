@@ -12,15 +12,18 @@ import (
 	"time"
 
 	"./input"
+	"./output"
 	"./storage"
 )
 
 const TimeFormat = "01/02/2006"
 
 type MoneySense struct {
-	store      *storage.Storage
-	history    string
-	classifier string
+	store          *storage.Storage
+	historyPath    string
+	history        string
+	classifierPath string
+	classifier     string
 }
 
 func NewMoneySense(historyPath string, classifierPath string) (*MoneySense, error) {
@@ -37,9 +40,11 @@ func NewMoneySense(historyPath string, classifierPath string) (*MoneySense, erro
 	}
 
 	return &MoneySense{
-		store:      store,
-		history:    historyName,
-		classifier: classifierName,
+		store:          store,
+		historyPath:    historyPath,
+		history:        historyName,
+		classifierPath: classifierPath,
+		classifier:     classifierName,
 	}, nil
 }
 
@@ -73,7 +78,9 @@ func loadData(csvPath string, store *storage.Storage) (string, error) {
 		}
 		return err
 	})
-	return filepath.Base(csvPath), err
+	dirName := filepath.Dir(csvPath)
+	tableName := strings.Replace(dirName, path.Ext(dirName), "", -1)
+	return tableName, err
 }
 
 func (ms *MoneySense) Close() error {
@@ -86,7 +93,7 @@ func (ms *MoneySense) Close() error {
 }
 
 func (ms *MoneySense) Classify() error {
-	query := fmt.Sprintf(`SELECT * FROM %v`, ms.history)
+	query := fmt.Sprintf(`SELECT date, mechant, IFNULL(credit, 0) FROM %v`, ms.history)
 	rows, err := ms.store.Query(query)
 	if err != nil {
 		return err
@@ -95,8 +102,9 @@ func (ms *MoneySense) Classify() error {
 	for rows.Next() {
 		var date time.Time
 		var mechant, category string
-		var credit, deposit, total float64
-		err = rows.Scan(&date, &mechant, &credit, &deposit, &total)
+		var credit float64
+		var changed bool
+		err = rows.Scan(&date, &mechant, &credit)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -116,6 +124,29 @@ func (ms *MoneySense) Classify() error {
 					log.Fatal("Failed to insert category information")
 				}
 			}
+			changed = true
+		} else if err != nil {
+			log.Fatal("Failed to classify:", err)
+		} else {
+			fmt.Printf("Classify %v as %v\n", mechant, category)
+		}
+
+		if changed {
+			writer, err := os.OpenFile(ms.classifierPath, os.O_WRONLY, 0600)
+			if err != nil {
+				log.Fatalf("Could not open %q", ms.classifierPath)
+			}
+
+			csvOutputOptions := output.CSVOutputOptions{
+				Separator:  ',',
+				WriteTo:    writer,
+				TimeFormat: TimeFormat,
+			}
+			csvOutput := output.NewCSVOutput(&csvOutputOptions)
+			err = ms.store.Save(ms.classifier, csvOutput)
+			if err != nil {
+				log.Fatal("Failed to save new classified data", err)
+			}
 		}
 	}
 	return nil
@@ -134,9 +165,8 @@ func (ms *MoneySense) Retrieve(category string, start string, end string) []Reco
 		log.Fatal("Failed to parse date:", end)
 	}
 
-	QUERY := fmt.Sprintf(`SELECT date, history.mechant, credit, category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v'`,
+	QUERY := fmt.Sprintf(`SELECT date, history.mechant, IFNULL(credit, 0), category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v'`,
 		ms.history, ms.classifier, ms.history, ms.classifier, start_dt, end_dt)
-	fmt.Println("query:", QUERY)
 	rows, err := ms.store.Query(QUERY)
 	if err != nil {
 		log.Fatal("query data base failed!: ", err)
