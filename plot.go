@@ -63,6 +63,7 @@ func plotHistory(history map[string][]Record) error {
 	p.X.Label.Text = "Date"
 	p.Y.Label.Text = "Amount"
 	p.Add(plotter.NewGrid())
+	p.Legend.Top = true
 
 	for category, records := range history {
 		var pts plotter.XYs
@@ -83,13 +84,13 @@ func plotHistory(history map[string][]Record) error {
 			B: uint8(rand.Intn(255)),
 			A: 255,
 		}
-		lpPoints.Shape = draw.PyramidGlyph{}
+		lpPoints.Shape = draw.CrossGlyph{}
 		lpPoints.Color = lpLine.Color
 		p.Add(lpLine, lpPoints)
 		p.Legend.Add(category, lpLine, lpPoints)
 	}
 
-	err = p.Save(600, 600, "./graph/plotHistory.png")
+	err = p.Save(1000, 1000, "./graph/plotHistory.png")
 	if err != nil {
 		log.Panic(err)
 	}
