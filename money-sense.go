@@ -165,7 +165,7 @@ func (ms *MoneySense) Retrieve(category string, start string, end string) []Reco
 		log.Fatal("Failed to parse date:", end)
 	}
 
-	QUERY := fmt.Sprintf(`SELECT date, history.mechant, IFNULL(credit, 0), category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v'`,
+	QUERY := fmt.Sprintf(`SELECT date, history.mechant, IFNULL(credit, 0), category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v' ORDER BY date ASC`,
 		ms.history, ms.classifier, ms.history, ms.classifier, start_dt, end_dt)
 	rows, err := ms.store.Query(QUERY)
 	if err != nil {
