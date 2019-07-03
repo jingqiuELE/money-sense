@@ -51,7 +51,7 @@ func PlotPieByCategory(data map[string]float64) error {
 	return err
 }
 
-func plotHistory(history map[string][]Record) error {
+func plotLinePointsHistory(history map[string][]Record) error {
 	p, err := plot.New()
 	if err != nil {
 		log.Panic(err)

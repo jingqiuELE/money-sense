@@ -26,6 +26,12 @@ type MoneySense struct {
 	classifier     string
 }
 
+type Record struct {
+	Date     time.Time
+	Amount   float64
+	Category string
+}
+
 func NewMoneySense(historyPath string, classifierPath string) (*MoneySense, error) {
 	store := storage.NewStorage()
 
@@ -78,8 +84,7 @@ func loadData(csvPath string, store *storage.Storage) (string, error) {
 		}
 		return err
 	})
-	dirName := filepath.Dir(csvPath)
-	tableName := strings.Replace(dirName, path.Ext(dirName), "", -1)
+	tableName := path.Base(csvPath)
 	return tableName, err
 }
 
@@ -96,7 +101,7 @@ func (ms *MoneySense) Classify() error {
 	query := fmt.Sprintf(`SELECT date, mechant, IFNULL(credit, 0) FROM %v`, ms.history)
 	rows, err := ms.store.Query(query)
 	if err != nil {
-		return err
+		log.Fatalf("Failed to query storage! %q, err=%v", query, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
@@ -165,7 +170,7 @@ func (ms *MoneySense) Retrieve(category string, start string, end string) []Reco
 		log.Fatal("Failed to parse date:", end)
 	}
 
-	QUERY := fmt.Sprintf(`SELECT date, history.mechant, IFNULL(credit, 0), category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v' ORDER BY date ASC`,
+	QUERY := fmt.Sprintf(`SELECT date, IFNULL(credit, 0), category FROM %v INNER JOIN %v ON %v.mechant = %v.mechant WHERE date >= '%v' AND date <= '%v' ORDER BY date ASC`,
 		ms.history, ms.classifier, ms.history, ms.classifier, start_dt, end_dt)
 	rows, err := ms.store.Query(QUERY)
 	if err != nil {
@@ -175,7 +180,7 @@ func (ms *MoneySense) Retrieve(category string, start string, end string) []Reco
 	for rows.Next() {
 		var r Record
 
-		err = rows.Scan(&r.Date, &r.Mechant, &r.Amount, &r.Category)
+		err = rows.Scan(&r.Date, &r.Amount, &r.Category)
 		if err != nil {
 			log.Fatal(err)
 		}

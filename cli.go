@@ -8,6 +8,15 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
+)
+
+type TimeUnit uint8
+
+const (
+	ByDate = TimeUnit(iota)
+	ByWeek
+	ByMonth
 )
 
 func main() {
@@ -22,7 +31,7 @@ func main() {
 
 	err = ms.Classify()
 	if err != nil {
-		log.Fatal("Could not classify records!")
+		log.Fatal("Could not classify records!", err)
 	}
 
 	reader := bufio.NewReader(os.Stdin)
@@ -53,11 +62,21 @@ func runCommand(commandStr string, ms *MoneySense) error {
 			return errors.New("Require 2 arguments specifying date range.")
 		}
 		printCategoryPercentage(arrCommandStr[1], arrCommandStr[2], ms)
-	case "ph":
+	case "hd":
 		if len(arrCommandStr) < 4 {
 			return errors.New("Require 3 arguments specifying category and date range.")
 		}
-		printHistory(arrCommandStr[1], arrCommandStr[2], arrCommandStr[3], ms)
+		printHistory(arrCommandStr[1], arrCommandStr[2], arrCommandStr[3], ms, ByDate)
+	case "hw":
+		if len(arrCommandStr) < 4 {
+			return errors.New("Require 3 arguments specifying category and date range.")
+		}
+		printHistory(arrCommandStr[1], arrCommandStr[2], arrCommandStr[3], ms, ByWeek)
+	case "hm":
+		if len(arrCommandStr) < 4 {
+			return errors.New("Require 3 arguments specifying category and date range.")
+		}
+		printHistory(arrCommandStr[1], arrCommandStr[2], arrCommandStr[3], ms, ByMonth)
 	}
 	return nil
 }
@@ -88,13 +107,61 @@ func printCategoryPercentage(start string, end string, ms *MoneySense) error {
 	return nil
 }
 
-func printHistory(category string, start string, end string, ms *MoneySense) error {
+func printHistory(category string, start string, end string, ms *MoneySense, unit TimeUnit) error {
 	var m = make(map[string][]Record)
 	records := ms.Retrieve(category, start, end)
 	for _, r := range records {
 		m[r.Category] = append(m[r.Category], r)
 	}
 
-	err := plotHistory(m)
+	switch unit {
+	case ByDate:
+	case ByWeek:
+		for category, records := range m {
+			m[category] = mergeRecordsByWeek(records)
+		}
+	case ByMonth:
+		for category, records := range m {
+			m[category] = mergeRecordsByMonth(records)
+		}
+	}
+	err := plotLinePointsHistory(m)
 	return err
+}
+
+func mergeRecordsByWeek(records []Record) []Record {
+	var year, week, pYear, pWeek int
+	var result []Record
+	for _, r := range records {
+		year, week = r.Date.ISOWeek()
+		len := len(result)
+		if year == pYear && week == pWeek {
+			result[len-1].Amount += r.Amount
+		} else {
+			result = append(result, r)
+			pYear = year
+			pWeek = week
+		}
+	}
+	return result
+}
+
+func mergeRecordsByMonth(records []Record) []Record {
+	var year, pYear int
+	var month, pMonth time.Month
+	var result []Record
+
+	for _, r := range records {
+		year = r.Date.Year()
+		month = r.Date.Month()
+		len := len(result)
+		if year == pYear && month == pMonth {
+			result[len-1].Amount += r.Amount
+		} else {
+			result = append(result, r)
+			pYear = year
+			pMonth = month
+		}
+	}
+	return result
 }

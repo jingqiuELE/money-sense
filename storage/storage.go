@@ -171,7 +171,7 @@ func (s *Storage) createTable(tableName string, headers []string, types []string
 	sqlStmt.WriteString(");")
 	_, err := s.db.Exec(sqlStmt.String())
 	if err != nil {
-		log.Fatal("Failed to create table:", err)
+		log.Fatal("Failed to create table:", tableName, err)
 	}
 	return err
 }
