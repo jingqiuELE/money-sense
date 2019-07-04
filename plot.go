@@ -9,6 +9,7 @@ import (
 	"github.com/benoitmasson/plotters/piechart"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 )
 
@@ -90,7 +91,53 @@ func plotLinePointsHistory(history map[string][]Record) error {
 		p.Legend.Add(category, lpLine, lpPoints)
 	}
 
-	err = p.Save(1000, 1000, "./graph/plotHistory.png")
+	err = p.Save(1000, 1000, "./graph/plotLinePointsHistory.png")
+	if err != nil {
+		log.Panic(err)
+	}
+	return nil
+}
+
+func plotBarChartHistory(history map[string][]Record) error {
+	p, err := plot.New()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	// xticks defines how we convert and display time.Time values.
+	xticks := plot.TimeTicks{Format: TimeFormat}
+	p.Title.Text = "Spending History"
+	p.X.Tick.Marker = xticks
+	p.X.Label.Text = "Date"
+	p.Y.Label.Text = "Amount"
+	p.Add(plotter.NewGrid())
+	p.Legend.Top = true
+	w := vg.Points(10)
+	var pBars *plotter.BarChart
+	for category, records := range history {
+		var values plotter.Values
+		for _, r := range records {
+			values = append(values, r.Amount)
+		}
+		bars, err := plotter.NewBarChart(values, w)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bars.LineStyle.Width = vg.Length(0)
+		bars.Color = color.RGBA{
+			R: uint8(rand.Intn(255)),
+			G: uint8(rand.Intn(255)),
+			B: uint8(rand.Intn(255)),
+			A: 255,
+		}
+		if pBars != nil {
+			bars.StackOn(pBars)
+		}
+		p.Add(bars)
+		p.Legend.Add(category, bars)
+		pBars = bars
+	}
+	err = p.Save(1000, 1000, "./graph/plotBarChartHistory.png")
 	if err != nil {
 		log.Panic(err)
 	}

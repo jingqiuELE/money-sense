@@ -117,16 +117,31 @@ func printHistory(category string, start string, end string, ms *MoneySense, uni
 	switch unit {
 	case ByDate:
 	case ByWeek:
-		for category, records := range m {
-			m[category] = mergeRecordsByWeek(records)
+		for category, rs := range m {
+			m[category] = mergeRecordsByWeek(rs)
 		}
 	case ByMonth:
-		for category, records := range m {
-			m[category] = mergeRecordsByMonth(records)
+		for category, rs := range m {
+			m[category] = mergeRecordsByMonth(rs)
 		}
 	}
+	fmt.Println("Plotting linepoints!")
 	err := plotLinePointsHistory(m)
-	return err
+	if err != nil {
+		log.Fatal("Failed to plot line points for history!", err)
+	}
+
+	startDate := records[0].Date
+	endDate := records[len(records)-1].Date
+	for category, rs := range m {
+		m[category] = fillInRecords(category, rs, unit, startDate, endDate)
+	}
+	fmt.Println("Plotting barchart!")
+	err = plotBarChartHistory(m)
+	if err != nil {
+		log.Fatal("Failed to plot bar chart for history!", err)
+	}
+	return nil
 }
 
 func mergeRecordsByWeek(records []Record) []Record {
@@ -138,6 +153,8 @@ func mergeRecordsByWeek(records []Record) []Record {
 		if year == pYear && week == pWeek {
 			result[len-1].Amount += r.Amount
 		} else {
+			weekday := r.Date.Weekday()
+			r.Date = r.Date.AddDate(0, 0, -int(weekday))
 			result = append(result, r)
 			pYear = year
 			pWeek = week
@@ -147,21 +164,82 @@ func mergeRecordsByWeek(records []Record) []Record {
 }
 
 func mergeRecordsByMonth(records []Record) []Record {
-	var year, pYear int
+	var year, pYear, days int
 	var month, pMonth time.Month
 	var result []Record
 
 	for _, r := range records {
-		year = r.Date.Year()
-		month = r.Date.Month()
+		year, month, days = r.Date.Date()
 		len := len(result)
 		if year == pYear && month == pMonth {
 			result[len-1].Amount += r.Amount
 		} else {
+			r.Date = r.Date.AddDate(0, 0, -days+1)
 			result = append(result, r)
 			pYear = year
 			pMonth = month
 		}
+	}
+	return result
+}
+
+func fillInRecords(category string, records []Record, unit TimeUnit, start time.Time, end time.Time) []Record {
+	type Step struct {
+		Year  int
+		Month int
+		Days  int
+	}
+	fmt.Printf("start=%v, end=%v\n", start, end)
+	var sd, ed time.Time
+	var step Step
+	var result []Record
+	switch unit {
+	case ByDate:
+		sd = start
+		ed = end
+		step = Step{
+			Year:  0,
+			Month: 0,
+			Days:  1,
+		}
+	case ByWeek:
+		weekday := start.Weekday()
+		sd = start.AddDate(0, 0, -int(weekday))
+		ed = end
+		step = Step{
+			Year:  0,
+			Month: 0,
+			Days:  7,
+		}
+	case ByMonth:
+		year, month, _ := start.Date()
+		sd = time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+		ed = end
+		step = Step{
+			Year:  0,
+			Month: 1,
+			Days:  0,
+		}
+	}
+	var r Record
+	var found bool
+	for t := sd; t.Before(ed); t = t.AddDate(step.Year, step.Month, step.Days) {
+		found = false
+		for _, record := range records {
+			if t.Equal(record.Date) {
+				r = record
+				found = true
+				break
+			}
+		}
+		if !found {
+			r = Record{
+				Date:     t,
+				Amount:   0,
+				Category: category,
+			}
+		}
+		result = append(result, r)
 	}
 	return result
 }
