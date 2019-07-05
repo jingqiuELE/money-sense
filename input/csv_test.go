@@ -7,18 +7,19 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dinedal/textql/test_util"
+	"../test_util"
 )
 
 var (
-	simple = `a,b,c
+	simple = `TEXT,TEXT,TEXT
+t1,t2,t3
+a,b,c
 1,2,3
 4,5,6`
 
-	simple_header = `TEXT,TEXT,TEXT
-	t1,t2,t3`
-	simple_header_nocol = `TEXT,TEXT,TEXT`
-	bad                 = `a,b,c
+	bad = `TEXT,TEXT,TEXT
+t1,t2,t3
+a,b,c
 1,2,
 4,5,6
 7,8
@@ -31,68 +32,34 @@ var (
 "test
 ",multi-line
 `
-	bad_header = `TEXT,TEXT,TEXT`
 )
 
-func TestCSVInputFakesHeader(t *testing.T) {
-	fp := test_util.OpenFileFromString(simple, "data.csv")
-	defer fp.Close()
-	defer os.Remove(fp.Name())
-
-	fp_header := test_util.OpenFileFromString(simple_header_nocol, "header.csv")
-	defer fp_header.Close()
-	defer os.Remove(fp_header.Name())
-
-	opts := &CSVInputOptions{
-		Separator: ',',
-		ReadFrom:  fp,
-		Header:    fp_header,
-	}
-
-	input, _ := NewCSVInput(opts)
-	expected := []string{"c0", "c1", "c2"}
-
-	if !reflect.DeepEqual(input.columnNames(), expected) {
-		t.Errorf("Header() = %v, want %v", input.columnNames(), expected)
-	}
-}
-
 func TestCSVInputReadsHeader(t *testing.T) {
-	fp := test_util.OpenFileFromString(simple, "data.csv")
+	fp := test_util.OpenCSVFromString(simple, "data.csv")
 	defer fp.Close()
 	defer os.Remove(fp.Name())
-
-	fp_header := test_util.OpenFileFromString(simple_header, "header.csv")
-	defer fp_header.Close()
-	defer os.Remove(fp_header.Name())
 
 	opts := &CSVInputOptions{
 		Separator: ',',
 		ReadFrom:  fp,
-		Header:    fp_header,
 	}
 
 	input, _ := NewCSVInput(opts)
 	expected := []string{"t1", "t2", "t3"}
 
-	if !reflect.DeepEqual(input.columnNames(), expected) {
-		t.Errorf("Header() = %v, want %v", input.columnNames(), expected)
+	if !reflect.DeepEqual(input.Columns(), expected) {
+		t.Errorf("Header() = %v, want %v", input.Columns(), expected)
 	}
 }
 
 func TestCSVInputReadsSimple(t *testing.T) {
-	fp := test_util.OpenFileFromString(simple, "data.csv")
+	fp := test_util.OpenCSVFromString(simple, "data.csv")
 	defer fp.Close()
 	defer os.Remove(fp.Name())
-
-	fp_header := test_util.OpenFileFromString(simple_header, "header.csv")
-	defer fp_header.Close()
-	defer os.Remove(fp_header.Name())
 
 	opts := &CSVInputOptions{
 		Separator: ',',
 		ReadFrom:  fp,
-		Header:    fp_header,
 	}
 
 	input, _ := NewCSVInput(opts)
@@ -102,7 +69,7 @@ func TestCSVInputReadsSimple(t *testing.T) {
 	expected[2] = []string{"4", "5", "6"}
 
 	for counter := 0; counter < len(expected); counter++ {
-		row := input.ReadRecord()
+		row := input.ReadRow()
 		if !reflect.DeepEqual(row, expected[counter]) {
 			t.Errorf("ReadRecord() = %v, want %v", row, expected[counter])
 		}
@@ -110,18 +77,13 @@ func TestCSVInputReadsSimple(t *testing.T) {
 }
 
 func TestCSVInputReadsBad(t *testing.T) {
-	fp := test_util.OpenFileFromString(bad, "data.csv")
+	fp := test_util.OpenCSVFromString(bad, "data.csv")
 	defer fp.Close()
 	defer os.Remove(fp.Name())
-
-	fp_header := test_util.OpenFileFromString(bad_header, "header.csv")
-	defer fp_header.Close()
-	defer os.Remove(fp_header.Name())
 
 	opts := &CSVInputOptions{
 		Separator: ',',
 		ReadFrom:  fp,
-		Header:    fp_header,
 	}
 
 	input, _ := NewCSVInput(opts)
@@ -137,7 +99,7 @@ func TestCSVInputReadsBad(t *testing.T) {
 	expected[8] = []string{"test\n", "multi-line", ""}
 
 	for counter := 0; counter < len(expected); counter++ {
-		row := input.ReadRecord()
+		row := input.ReadRow()
 		if !reflect.DeepEqual(row, expected[counter]) {
 			t.Errorf("ReadRecord() = %v, want %v", row, expected[counter])
 		}
@@ -145,22 +107,17 @@ func TestCSVInputReadsBad(t *testing.T) {
 }
 
 func TestCSVInputHasAName(t *testing.T) {
-	fp := test_util.OpenFileFromString(simple, "data.csv")
+	fp := test_util.OpenCSVFromString(simple, "data.csv")
 	defer fp.Close()
 	defer os.Remove(fp.Name())
-
-	fp_header := test_util.OpenFileFromString(simple_header, "header.csv")
-	defer fp_header.Close()
-	defer os.Remove(fp_header.Name())
 
 	opts := &CSVInputOptions{
 		Separator: ',',
 		ReadFrom:  fp,
-		Header:    fp_header,
 	}
 
 	input, _ := NewCSVInput(opts)
-	expected := fp.Name()
+	expected := "."
 
 	if !reflect.DeepEqual(input.Name(), expected) {
 		t.Errorf("Name() = %v, want %v", input.Name(), expected)

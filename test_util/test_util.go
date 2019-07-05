@@ -6,7 +6,7 @@ import (
 )
 
 func OpenCSVFromString(contents string, filename string) *os.File {
-	f, _ := ioutil.TempFile("./test/", filename)
+	f, _ := ioutil.TempFile("./", filename)
 	f.WriteString(contents)
 	f.Seek(0, 0)
 	return f

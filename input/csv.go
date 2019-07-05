@@ -51,7 +51,7 @@ func NewCSVInput(opts *CSVInputOptions) (*CSVInput, error) {
 	return csvInput, nil
 }
 
-// ReadRecord reads a single record from the CSV.
+// ReadRow reads a single record from the CSV.
 // If the record is empty, an empty []string is returned.
 // Record expand to match the current row size, adding blank fields as needed.
 // Records never return less then the number of fields in the first row.
