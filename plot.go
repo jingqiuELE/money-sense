@@ -114,10 +114,13 @@ func plotBarChartHistory(history map[string][]Record) error {
 	p.Legend.Top = true
 	w := vg.Points(10)
 	var pBars *plotter.BarChart
+	var xnames []string
 	for category, records := range history {
 		var values plotter.Values
+		xnames = nil
 		for _, r := range records {
 			values = append(values, r.Amount)
+			xnames = append(xnames, r.Date.Format(TimeFormat))
 		}
 		bars, err := plotter.NewBarChart(values, w)
 		if err != nil {
@@ -135,9 +138,10 @@ func plotBarChartHistory(history map[string][]Record) error {
 		}
 		p.Add(bars)
 		p.Legend.Add(category, bars)
+		p.NominalX(xnames...)
 		pBars = bars
 	}
-	err = p.Save(1000, 1000, "./graph/plotBarChartHistory.png")
+	err = p.Save(vg.Length(len(xnames))*vg.Inch, 1000, "./graph/plotBarChartHistory.png")
 	if err != nil {
 		log.Panic(err)
 	}

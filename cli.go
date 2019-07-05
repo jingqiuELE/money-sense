@@ -189,7 +189,6 @@ func fillInRecords(category string, records []Record, unit TimeUnit, start time.
 		Month int
 		Days  int
 	}
-	fmt.Printf("start=%v, end=%v\n", start, end)
 	var sd, ed time.Time
 	var step Step
 	var result []Record
@@ -221,6 +220,8 @@ func fillInRecords(category string, records []Record, unit TimeUnit, start time.
 			Days:  0,
 		}
 	}
+	fmt.Printf("start=%v, end=%v\n", start, end)
+	fmt.Printf("%v: sd=%v, ed=%v\n", category, sd, ed)
 	var r Record
 	var found bool
 	for t := sd; t.Before(ed); t = t.AddDate(step.Year, step.Month, step.Days) {
@@ -239,6 +240,7 @@ func fillInRecords(category string, records []Record, unit TimeUnit, start time.
 				Category: category,
 			}
 		}
+		fmt.Printf("t=%v\n", t)
 		result = append(result, r)
 	}
 	return result
