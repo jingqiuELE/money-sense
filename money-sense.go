@@ -84,7 +84,20 @@ func loadData(csvPath string, store *storage.Storage) (string, error) {
 		}
 		return err
 	})
-	tableName := path.Base(csvPath)
+	fi, err := os.Stat(csvPath)
+	if err != nil {
+		log.Fatal("Failed to get the status of file %v\n", csvPath)
+	}
+
+	var tableName string
+	switch mode := fi.Mode(); {
+	case mode.IsDir():
+		tableName = path.Base(csvPath)
+	case mode.IsRegular():
+		tableName = path.Base(path.Dir(csvPath))
+	}
+
+	fmt.Println("tableName:", tableName)
 	return tableName, err
 }
 
