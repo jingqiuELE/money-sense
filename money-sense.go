@@ -54,8 +54,22 @@ func NewMoneySense(historyPath string, classifierPath string) (*MoneySense, erro
 	}, nil
 }
 
-func loadData(csvPath string, store *storage.Storage) (string, error) {
-	err := filepath.Walk(csvPath, func(p string, info os.FileInfo, err error) error {
+func loadData(filePath string, store *storage.Storage) (string, error) {
+	fi, err := os.Stat(filePath)
+	if err != nil {
+		log.Fatal("Failed to get the status of file %v\n", filePath)
+	}
+
+	var tableName string
+	switch mode := fi.Mode(); {
+	case mode.IsDir():
+		tableName = path.Base(filePath)
+	case mode.IsRegular():
+		extension := path.Ext(filePath)
+		tableName = path.Base(filePath[0 : len(filePath)-len(extension)])
+	}
+
+	err = filepath.Walk(filePath, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", p, err)
 			return err
@@ -77,25 +91,13 @@ func loadData(csvPath string, store *storage.Storage) (string, error) {
 			if err != nil {
 				log.Fatal("Could not create new CSVInput")
 			}
-			err = store.Load(csvInput)
+			err = store.Load(tableName, csvInput)
 			if err != nil {
 				log.Fatal("Could not load csv file into Storage")
 			}
 		}
 		return err
 	})
-	fi, err := os.Stat(csvPath)
-	if err != nil {
-		log.Fatal("Failed to get the status of file %v\n", csvPath)
-	}
-
-	var tableName string
-	switch mode := fi.Mode(); {
-	case mode.IsDir():
-		tableName = path.Base(csvPath)
-	case mode.IsRegular():
-		tableName = path.Base(path.Dir(csvPath))
-	}
 
 	fmt.Println("tableName:", tableName)
 	return tableName, err

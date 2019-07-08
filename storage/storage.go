@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"path"
 	"strings"
 
 	"../input"
@@ -61,8 +60,7 @@ func (s *Storage) Close() error {
 	return s.db.Close()
 }
 
-func (s *Storage) Load(input *input.CSVInput) error {
-	tableName := strings.Replace(input.Name(), path.Ext(input.Name()), "", -1)
+func (s *Storage) Load(tableName string, input *input.CSVInput) error {
 	err := s.createTable(tableName, input.Columns(), input.Types())
 	if err != nil {
 		log.Fatal("Failed to create table!")
@@ -107,7 +105,7 @@ func (s *Storage) Save(tableName string, output *output.CSVOutput) error {
 	query := fmt.Sprintf("SELECT * FROM '%v'", tableName)
 	rows, err := s.db.Query(query)
 	if err != nil {
-		log.Fatal("query data base failed!", err)
+		log.Fatal("Save: query data base failed! ", err)
 	}
 	defer rows.Close()
 

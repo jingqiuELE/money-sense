@@ -117,7 +117,7 @@ func TestCSVInputHasAName(t *testing.T) {
 	}
 
 	input, _ := NewCSVInput(opts)
-	expected := "."
+	expected := fp.Name()
 
 	if !reflect.DeepEqual(input.Name(), expected) {
 		t.Errorf("Name() = %v, want %v", input.Name(), expected)
